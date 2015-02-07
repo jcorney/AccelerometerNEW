@@ -45,15 +45,22 @@ public class AccelerometerMainActivity extends Activity implements
 	private float accelerometerValue0;
 	private float accelerometerValue1;
 	private float accelerometerValue2;
+	private float accelerometerMaxRange = 0;
+	private float accelerometerPower = 0;
+	private float accelerometerResolution = 0;
 	private int  accelerometerSensorType;
+	private int numAccelerometerChanges = 0;
+	private int accelerometerVersion = 0;
+	private int accelerometerHashCode = 0;
 	private Sensor mAccelerometer;
 	private long accelerometerTimeStamp;
-
-	private int numAccelerometerChanges = 0;
+	private String accelerometerVendor;
 
 	private List<NameValuePair> paramsDevice = new ArrayList<NameValuePair>();
 	private List<NameValuePair> paramsErrorMsg = new ArrayList<NameValuePair>();
-	private List<NameValuePair> paramsLocation = new ArrayList<NameValuePair>();
+	private List<NameValuePair> paramsAccelerometer = new ArrayList<NameValuePair>();
+	private List<NameValuePair> paramsSensor = new ArrayList<NameValuePair>();
+
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -62,10 +69,11 @@ public class AccelerometerMainActivity extends Activity implements
 
 		txtResults = (TextView) this.findViewById(R.id.txtResults);
 
-		// Setup Location Manager and Provider
+		// Setup Accelerometer Manager and Provider
 		sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 		mAccelerometer = sensorManager
 				.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+		
 
 		setDeviceData();
 		showDeviceData();
@@ -75,11 +83,16 @@ public class AccelerometerMainActivity extends Activity implements
 			setErrorMsg("No Accelerometer Detected");
 			showErrorMsg();
 			sendErrorMsg();
+		} else{
+			setSensorData();
+			showSensorData();
+			sendSensorData();
 		}
+		
 
 	}
 
-	/* Request location updates at startup */
+	/* Request Accelerometer updates at startup */
 	@Override
 	protected void onResume() {
 		super.onResume();
@@ -87,7 +100,7 @@ public class AccelerometerMainActivity extends Activity implements
 
 	}
 
-	/* Remove the locationlistener updates when Activity is paused */
+	/* Remove the Accelerometerlistener updates when Activity is paused */
 	@Override
 	protected void onPause() {
 		super.onPause();
@@ -97,7 +110,7 @@ public class AccelerometerMainActivity extends Activity implements
 	@Override
 	public void onSensorChanged(SensorEvent event) {
 		if (mAccelerometer != null) {
-			if ((event.sensor.getType() == mAccelerometer.getType()) && numAccelerometerChanges < 50) {
+			if ((event.sensor.getType() == mAccelerometer.getType()) && numAccelerometerChanges < 10) {
 				
 				numAccelerometerChanges++;
 				setAccelerometerData(event);
@@ -165,11 +178,14 @@ public class AccelerometerMainActivity extends Activity implements
 		if (postParameters.equals("DEVICE")) {
 			writer.write(buildPostRequest(paramsDevice));
 		} else if (postParameters.equals("ACCELEROMETER")) {
-			writer.write(buildPostRequest(paramsLocation));
-			paramsLocation = new ArrayList<NameValuePair>();
+			writer.write(buildPostRequest(paramsAccelerometer));
+			paramsAccelerometer = new ArrayList<NameValuePair>();
 		} else if (postParameters.equals("ERROR_MSG")) {
 			writer.write(buildPostRequest(paramsErrorMsg));
 			paramsErrorMsg = new ArrayList<NameValuePair>();
+		}  else if (postParameters.equals("SENSOR")) {
+			writer.write(buildPostRequest(paramsSensor));
+			paramsSensor = new ArrayList<NameValuePair>();
 		}
 
 		writer.flush();
@@ -194,7 +210,7 @@ public class AccelerometerMainActivity extends Activity implements
 		protected String doInBackground(String... params) {
 			// params comes from the execute() call: params[0] is the url,
 			// params[1] is type POST
-			// request to send - i.e. whether to send Device or Location
+			// request to send - i.e. whether to send Device or Accelerometer
 			// parameters.
 			try {
 				return sendHttpRequest(params[0], params[1]);
@@ -204,7 +220,6 @@ public class AccelerometerMainActivity extends Activity implements
 				return errorMsg;
 			}
 		}
-
 	}
 
 	private void setDeviceData() {
@@ -225,7 +240,6 @@ public class AccelerometerMainActivity extends Activity implements
 	}
 
 	private void setAccelerometerData(SensorEvent accelerometer) {
-
 		accelerometerAccuracy = accelerometer.accuracy;
 		accelerometerSensorType = accelerometer.sensor.getType();
 		accelerometerTimeStamp = accelerometer.timestamp;
@@ -233,23 +247,45 @@ public class AccelerometerMainActivity extends Activity implements
 		accelerometerValue1 = accelerometer.values[1];
 		accelerometerValue2 = accelerometer.values[2];
 
-		paramsLocation.add(new BasicNameValuePair("Accelerometer Update Count",
+		paramsAccelerometer.add(new BasicNameValuePair("Accelerometer Update Count",
 				String.valueOf(numAccelerometerChanges)));
-		paramsLocation.add(new BasicNameValuePair("Accuracy", String
+		paramsAccelerometer.add(new BasicNameValuePair("Accuracy", String
 				.valueOf(accelerometerAccuracy)));
-		paramsLocation.add(new BasicNameValuePair("Sensor Type", String
+		paramsAccelerometer.add(new BasicNameValuePair("Sensor Type", String
 				.valueOf(accelerometerSensorType)));
-		paramsLocation.add(new BasicNameValuePair("Time Stamp", String
+		paramsAccelerometer.add(new BasicNameValuePair("Time Stamp", String
 				.valueOf(accelerometerTimeStamp)));
-		paramsLocation.add(new BasicNameValuePair(
+		paramsAccelerometer.add(new BasicNameValuePair(
 				"Value 0 Acceleration minus Gx on the x axis", String
 						.valueOf(accelerometerValue0)));
-		paramsLocation.add(new BasicNameValuePair(
+		paramsAccelerometer.add(new BasicNameValuePair(
 				"Value 1 Acceleration minus Gy on the y axis", String
 						.valueOf(accelerometerValue1)));
-		paramsLocation.add(new BasicNameValuePair(
+		paramsAccelerometer.add(new BasicNameValuePair(
 				"Value 2 Acceleration minus Gz on the z axis", String
 						.valueOf(accelerometerValue2)));
+		paramsAccelerometer.add(new BasicNameValuePair(
+				"Hash Code Value", String
+						.valueOf(accelerometerHashCode)));
+	}
+	
+	private void setSensorData() {
+		accelerometerMaxRange = mAccelerometer.getMaximumRange();
+		accelerometerPower = mAccelerometer.getPower();
+		accelerometerResolution = mAccelerometer.getResolution();
+		accelerometerVendor = mAccelerometer.getVendor();
+		accelerometerVersion = mAccelerometer.getVersion();		
+		
+		paramsSensor.add(new BasicNameValuePair("Max Range", String
+						.valueOf(accelerometerMaxRange)));
+		paramsSensor.add(new BasicNameValuePair("Power", String
+				.valueOf(accelerometerPower)));
+		paramsSensor.add(new BasicNameValuePair("Resolution", String
+				.valueOf(accelerometerResolution)));
+		paramsSensor.add(new BasicNameValuePair("Vendor", String
+				.valueOf(accelerometerVendor)));
+		paramsSensor.add(new BasicNameValuePair("Version", String
+				.valueOf(accelerometerVersion)));
 	}
 
 	private void showDeviceData() {
@@ -276,7 +312,7 @@ public class AccelerometerMainActivity extends Activity implements
 	private void showAccelerometerData() {
 		StringBuilder results = new StringBuilder();
 
-		results.append("Location Update Count: "
+		results.append("Accelerometer Update Count: "
 				+ String.valueOf(numAccelerometerChanges) + "\n");
 		results.append("Accelerometer Accuracy: " + String.valueOf(accelerometerAccuracy) + "\n");
 		results.append("Accelerometer Sensor Type: " + String.valueOf(accelerometerSensorType) + "\n");
@@ -284,6 +320,20 @@ public class AccelerometerMainActivity extends Activity implements
 		results.append("Accelerometer Vaule 0 (X axis): " + String.valueOf(accelerometerValue0) + "\n");
 		results.append("Accelerometer Vaule 1 (Y axis): " + String.valueOf(accelerometerValue1) + "\n");
 		results.append("Accelerometer Vaule 2 (Z axis): " + String.valueOf(accelerometerValue2) + "\n");
+		results.append("Accelerometer Hash Code " + String.valueOf(accelerometerHashCode) + "\n");
+		
+		txtResults.append(new String(results));
+		txtResults.append("\n");
+	}
+	
+	private void showSensorData() {
+		StringBuilder results = new StringBuilder();
+		
+		results.append("Max Range: " + String.valueOf(accelerometerMaxRange) + "\n");
+		results.append("Power: " + String.valueOf(accelerometerPower) + "\n");
+		results.append("Resolution: " + String.valueOf(accelerometerResolution) + "\n");
+		results.append("Vendor: " + String.valueOf(accelerometerVendor) + "\n");
+		results.append("Version: " + String.valueOf(accelerometerVersion) + "\n");
 		
 		txtResults.append(new String(results));
 		txtResults.append("\n");
@@ -297,7 +347,7 @@ public class AccelerometerMainActivity extends Activity implements
 		// and Logcat file
 		if (networkInfo != null && networkInfo.isConnected()) {
 			// Send HTTP POST request to server which will include POST
-			// parameters with location info
+			// parameters with Accelerometer info
 			new SendHttpRequestTask().execute(SERVER_URL, "DEVICE");
 		} else {
 			setErrorMsg("No Network Connectivity");
@@ -313,7 +363,7 @@ public class AccelerometerMainActivity extends Activity implements
 		// and Logcat file
 		if (networkInfo != null && networkInfo.isConnected()) {
 			// Send HTTP POST request to server which will include POST
-			// parameters with location info
+			// parameters with Accelerometer info
 			new SendHttpRequestTask().execute(SERVER_URL, "ERROR_MSG");
 		} else {
 			setErrorMsg("No Network Connectivity");
@@ -329,8 +379,24 @@ public class AccelerometerMainActivity extends Activity implements
 		// and Logcat file
 		if (networkInfo != null && networkInfo.isConnected()) {
 			// Send HTTP POST request to server which will include POST
-			// parameters with location info
+			// parameters with Accelerometer info
 			new SendHttpRequestTask().execute(SERVER_URL, "ACCELEROMETER");
+		} else {
+			setErrorMsg("No Network Connectivity");
+			showErrorMsg();
+		}
+	}
+
+	private void sendSensorData() {
+		ConnectivityManager connectMgr = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+		NetworkInfo networkInfo = connectMgr.getActiveNetworkInfo();
+
+		// Verify network connectivity is working; if not add note to TextView
+		// and Logcat file
+		if (networkInfo != null && networkInfo.isConnected()) {
+			// Send HTTP POST request to server which will include POST
+			// parameters with Accelerometer info
+			new SendHttpRequestTask().execute(SERVER_URL, "SENSOR");
 		} else {
 			setErrorMsg("No Network Connectivity");
 			showErrorMsg();
